@@ -7,21 +7,20 @@ co2 <- ts(ajgr['CO2'], frequency = 24, start = as.Date('2017-10-01 00:00:00'), e
 plot(co2)
 
 co2_d <- diff(co2)
+co2_2d <- diff(diff(co2, lag=24))
 co2_log <- log(co2 - 300)
 
 plot(co2_d)
 plot(co2_log)
 
-co2_choosen <- co2_diff
+# OUR MODEL
+co2_choosen <- co2_2d
 
 Acf(co2_choosen, lag.max = 100)
-# tail off
-
 Pacf(co2_choosen, lag.max = 100)
-# cut off
 
 # => SAR
-fit0 <- Arima(co2_choosen, order=c(1, 1, 0), seasonal=list(order=c(1, 1, 0), period=24))
+fit0 <- Arima(co2_choosen, order=c(0, 1, 1), seasonal=list(order=c(0, 1, 1), period=24))
 e <- fit0$residuals
 plot(e)
 Acf(e)
