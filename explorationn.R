@@ -1,26 +1,34 @@
 library(forecast)
 library(tseries)
+library(zoo)
 
 ajgr <- read.csv("data/co2_ajgr.csv", header=TRUE, sep=',')
-co2 <- ts(ajgr['CO2'], frequency = 24, start = as.Date('2017-10-01 00:00:00'), end = as.Date('2017-10-31 23:00:00'))
 
+d <- as.POSIXlt(ajgr$timestamp)
+z <- zoo(ajgr$CO2, d)
+
+plot(z)
+
+co2 <- as.ts(z)
 plot(co2)
 
 co2_d <- diff(co2)
 co2_2d <- diff(diff(co2, lag=24))
-co2_log <- log(co2 - 300)
+co2_log <- log(co2-300)
 
 plot(co2_d)
 plot(co2_log)
 
 # OUR MODEL
-co2_choosen <- co2_2d
+co2_choosen <- co2_log
+
+kpss.test(co2_choosen)
 
 Acf(co2_choosen, lag.max = 100)
 Pacf(co2_choosen, lag.max = 100)
 
 # => SAR
-fit0 <- Arima(co2_choosen, order=c(0, 1, 1), seasonal=list(order=c(0, 1, 1), period=24))
+fit0 <- Arima(co2, order=c(0, 1, 1), seasonal=list(order=c(0, 1, 1), period=24))
 e <- fit0$residuals
 plot(e)
 Acf(e)
