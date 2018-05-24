@@ -1,34 +1,57 @@
 library(forecast)
 library(tseries)
 library(zoo)
+library(TSA)
 
 ajgr <- read.csv("data/co2_ajgr.csv", header=TRUE, sep=',')
 
 d <- as.POSIXlt(ajgr$timestamp)
 z <- zoo(ajgr$CO2, d)
 
-plot(z,  xlab="Date", ylab="CO2 concentration (in ppm)")
+plot(z,  xlab="Date", ylab="CO2 concentration")
 
+#-------------- Raw Data --------------#
 co2 <- as.ts(z)
-plot(co2)
+kpss.test(co2)
 
-co2_d <- diff(co2)
-co2_2d <- diff(diff(co2, lag=24))
+par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
+par(mfrow=c(3,1))
+plot(z, xlab="Time", ylab="CO2 concentration"); title('a) Raw Data', line=0.3)
+Acf(co2, lag.max = 100); title('b) ACF', line=0.3)
+spectrum(ajgr$CO2, ylab="Periodogram", xlab="Frequency", main='')
+
+
+#-------------- Diff Data --------------#
+co2_d <- diff(co2, lag=24)
+kpss.test(co2_d)
+
+par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
+par(mfrow=c(3,1))
+plot(diff(z), xlab="Time", ylab="Data diff"); title('a) Diff Data', line=0.3)
+Acf(co2_d, lag.max = 100); title('b) ACF', line=0.3)
+Pacf(co2_d, lag.max = 100); title('c) PACF', line=0.3)
+
+
+#-------------- Log data --------------#
 co2_log <- log(co2-300)
-
-plot(co2_d)
 plot(co2_log)
+kpss.test(co2_log)
+
+
+#-------------- dd data --------------#
+co2_dd <- diff(diff(co2, lag=24))
+kpss.test(co2_dd)
+
+
 
 # OUR MODEL
-co2_choosen <- co2_log
-
-kpss.test(co2_choosen)
+co2_choosen <- co2_d
 
 Acf(co2_choosen, lag.max = 100)
 Pacf(co2_choosen, lag.max = 100)
 
 # => SAR
-fit0 <- Arima(co2, order=c(0, 1, 1), seasonal=list(order=c(0, 1, 1), period=24))
+fit0 <- Arima(co2, order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
 e <- fit0$residuals
 plot(e)
 Acf(e)
@@ -39,8 +62,7 @@ cpgram(e)
 lbt <- c(); for (h in 3:25) lbt[h] <- Box.test(e,lag=h,type='Ljung-Box',fitdf=2)$p.value
 plot(lbt, ylim=c(0,1)); abline(h=0.05,col='blue',lty='dotted')
 
-#par(mar=c(3,3,1.2,0.1),mgp=c(1.5,0.4,0))
-#par(mfrow=c(3,1))
-#plot(e,main='',ylab='',xlab='Time'); title('Residuals', line=0.3)
-#Acf(e,main=''); title('ACF of residuals', line=0.3)
-#plot(3:25, lbt[3:25], ylim=c(0,1),xlab='DF', ylab='p value',main=''); abline(h=0.05,col='blue',lty='dotted'); title('p values for Ljung-Box statistic (adjusted DF)', line=0.3)
+
+# forecasting
+fit0 <- Arima(co2, order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
+plot(forecast(fit0, h=100, level=95))
