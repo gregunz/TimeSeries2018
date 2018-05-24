@@ -7,7 +7,7 @@ ajgr <- read.csv("data/co2_ajgr.csv", header=TRUE, sep=',')
 d <- as.POSIXlt(ajgr$timestamp)
 z <- zoo(ajgr$CO2, d)
 
-plot(z)
+plot(z,  xlab="Date", ylab="CO2 concentration (in ppm)")
 
 co2 <- as.ts(z)
 plot(co2)
