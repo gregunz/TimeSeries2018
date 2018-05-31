@@ -54,7 +54,7 @@ plot(e)
 Acf(e)
 Pacf(e)
 cpgram(e)
-qqnorm(e)
+qqnorm(e) #not good because we have extrem values
 
 # Ljung-Box
 lbt <- c(); for (h in 6:25) lbt[h] <- Box.test(e,lag=h,type='Ljung-Box',fitdf=5)$p.value
