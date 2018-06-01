@@ -11,14 +11,17 @@ z <- zoo(ajgr$CO2, d)
 plot(z,  xlab="Date", ylab="CO2 concentration")
 
 #-------------- Raw Data --------------#
-co2 <- as.ts(z)
+co2 <- ajgr$CO2
 kpss.test(co2)
+adf.test(co2)
 
 par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
-par(mfrow=c(3,1))
+par(mfrow=c(2,1))
 plot(z, xlab="Time", ylab="CO2 concentration"); title('a) Raw Data', line=0.3)
 Acf(co2, lag.max = 100); title('b) ACF', line=0.3)
+
 spectrum(ajgr$CO2, ylab="Periodogram", xlab="Frequency", main='')
+title('c) Spectrum', line=0.3)
 
 
 #-------------- Log data --------------#
@@ -33,6 +36,7 @@ kpss.test(co2_d)
 #-------------- Diff^2 data --------------#
 co2_dd <- diff(diff(co2, lag=24))
 kpss.test(co2_dd)
+adf.test(co2_dd)
 
 par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
 par(mfrow=c(3,1))
@@ -61,10 +65,10 @@ lbt <- c(); for (h in 6:25) lbt[h] <- Box.test(e,lag=h,type='Ljung-Box',fitdf=5)
 plot(lbt, ylim=c(0,1)); abline(h=0.05,col='blue',lty='dotted')
 
 # forecasting
-fit0 <- Arima(co2[0:620], order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
-plot(forecast(fit0, h=500, level=95))
+fit0 <- Arima(co2, order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
+plot(forecast(fit0, h=120, level=95))
 
-fit1 <- Arima(co2[0:576], order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
+fit1 <- Arima(co2[1:576], order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
 f <- forecast(fit1, h=168, level=95)
 
 valuesForcasted <- f[["mean"]]
