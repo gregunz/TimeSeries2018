@@ -51,9 +51,60 @@ co2_choosen <- co2_dd
 Acf(co2_choosen, lag.max = 100)
 Pacf(co2_choosen, lag.max = 100)
 
-# We fit a SARIMA model
-fit0 <- Arima(co2, order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
-e <- fit0$residuals
+# many sarimas models
+
+sarimas <- list(
+  list(order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24)),
+  list(order=c(1, 1, 2), seasonal=list(order=c(0, 1, 1), period=24)),
+  list(order=c(2, 1, 1), seasonal=list(order=c(0, 1, 1), period=24)),
+  list(order=c(1, 1, 1), seasonal=list(order=c(0, 1, 1), period=24)),
+  list(order=c(1, 1, 0), seasonal=list(order=c(0, 1, 1), period=24)),
+  list(order=c(0, 1, 1), seasonal=list(order=c(0, 1, 1), period=24))
+)
+
+
+#-------------- Comparison of models --------------#
+# let's find the best model by predicting the last week
+# of data we have using the weeks before
+
+true_values <- co2[577:744]
+
+best_error <- NULL
+best_model_fit <- NULL
+best_model_predictions <- NULL
+
+for (s in sarimas){
+  model_fit <- Arima(co2[1:576], order=s$order, seasonal=s$seasonal)
+  predictions <- forecast(model_fit, h=168, level=95)[["mean"]]
+
+  avg_error <- mean((true_values - predictions)^2)
+  print(avg_error)
+  
+  if(is.null(best_error) || avg_error < best_error){
+    print("new best model changed")
+    print(paste("it has an parameters =", s))
+    print(paste("it has an average error = ", avg_error))
+    best_error <- avg_error
+    best_model_fit = model_fit
+    best_model_predictions <- predictions
+  }
+}
+
+
+# let's show how good we predicted the last week compared to true values
+
+x <-  seq(1, 168, 1)
+
+plot(x, true_values, type='l', col='blue', ylab="CO2 concentration")
+title('Predicted values vs true values')
+lines(x, best_model_predictions, col='red')
+legend(135, 354, legend=c("True", "Predicted"), col=c("blue", "red"), lty=1:1, cex=0.7)
+
+
+
+# let's analyze the best model
+
+e <- best_model_fit$residuals
 plot(e)
 Acf(e)
 Pacf(e)
@@ -61,36 +112,14 @@ cpgram(e)
 qqnorm(e)
 qqline(e, col='red') #not good because we have extrem values
 
+
 #-------------- Ljung-Box --------------#
 lbt <- c(); for (h in 6:25) lbt[h] <- Box.test(e,lag=h,type='Ljung-Box',fitdf=5)$p.value
 plot(lbt, ylim=c(0,1)); abline(h=0.05,col='blue',lty='dotted')
 
 
 
-#-------------- Forecasting --------------#
-fit0 <- Arima(co2, order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
-plot(forecast(fit0, h=120, level=95))
+#-------------- Forecasting future value --------------#
+plot(forecast(best_model_fit, h=120, level=95))
 
-#-------------- Forecasting past values --------------#
-fit1 <- Arima(co2[1:576], order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24))
-f <- forecast(fit1, h=168, level=95)
-
-valuesForcasted <- f[["mean"]]
-trueValues <- co2[577:744]
-
-x <-  seq(1, 168, 1)
-
-plot(x, trueValues, type='l', col='blue', ylab="CO2 concentration")
-title('Predicted values vs true values')
-legend(135, 354, legend=c("True", "Predicted"), col=c("blue", "red"),
-       lty=1:1, cex=0.7)
-lines(x, valuesForcasted, col='red')
-
-
-
-#-------------- Comparison of models --------------#
-# do for each model:
-
-diff <- abs(trueValues - valuesForcasted)
-avg_error <- mean(diff)
 
