@@ -3,6 +3,8 @@ library(tseries)
 library(zoo)
 library(TSA)
 
+
+#-------------- Raw Data Loading --------------#
 ajgr <- read.csv("data/co2_ajgr.csv", header=TRUE, sep=',')
 
 d <- as.POSIXlt(ajgr$timestamp)
@@ -45,14 +47,18 @@ Acf(co2_dd, lag.max = 100); title('b) ACF', line=0.3)
 Pacf(co2_dd, lag.max = 100); title('c) PACF', line=0.3)
 
 
-#-------------- OUR MODEL --------------#
+#-------------- Stationnary model we will fit --------------#
 co2_choosen <- co2_dd
 
 Acf(co2_choosen, lag.max = 100)
 Pacf(co2_choosen, lag.max = 100)
 
-# many sarimas models
 
+#-------------- Comparison of models --------------#
+# let's find the best model by predicting the last week
+# of data we have using the weeks before
+
+# many possible sarimas models
 sarimas <- list(
   list(order=c(2, 1, 2), seasonal=list(order=c(0, 1, 1), period=24)),
   list(order=c(1, 1, 2), seasonal=list(order=c(0, 1, 1), period=24)),
@@ -61,11 +67,6 @@ sarimas <- list(
   list(order=c(1, 1, 0), seasonal=list(order=c(0, 1, 1), period=24)),
   list(order=c(0, 1, 1), seasonal=list(order=c(0, 1, 1), period=24))
 )
-
-
-#-------------- Comparison of models --------------#
-# let's find the best model by predicting the last week
-# of data we have using the weeks before
 
 true_values <- co2[577:744]
 
@@ -101,7 +102,7 @@ lines(best_model_predictions, col='red')
 legend(d[577:744][135], 354, legend=c("True", "Predicted"), col=c("blue", "red"), lty=1:1, cex=0.7)
 
 
-# let's analyze the best model
+#-------------- Final Model Analysis --------------#
 
 best_full_model_fit <- Arima(as.ts(co2), order=best_model_parameters$order, seasonal=best_model_parameters$seasonal)
 e <- best_full_model_fit$residuals
