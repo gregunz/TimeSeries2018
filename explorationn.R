@@ -9,7 +9,7 @@ ajgr <- read.csv("data/co2_ajgr.csv", header=TRUE, sep=',')
 
 d <- as.POSIXlt(ajgr$timestamp)
 co2 <- zoo(ajgr$CO2, d)
-plot(co2,  xlab="Date", ylab="CO2 concentration")
+plot(co2,  xlab="Time", ylab="CO2 concentration")
 
 
 #-------------- Stationnarity Tests --------------#
@@ -19,8 +19,8 @@ adf.test(co2)
 #-------------- Raw Data --------------#
 par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
 par(mfrow=c(2,1))
-plot(co2, xlab="Time", ylab="CO2 concentration"); title('a) Raw Data', line=0.3)
-Acf(co2, lag.max = 100); title('b) ACF', line=0.3)
+plot(co2, xlab="Time", ylab="CO2 ppm"); title('Raw Data', line=0.3)
+Acf(co2, lag.max = 100); title('ACF of raw data', line=0.3)
 
 spectrum(ajgr$CO2, ylab="Periodogram", xlab="Frequency", main='')
 title('c) Spectrum', line=0.3)
@@ -42,9 +42,9 @@ adf.test(co2_dd)
 
 par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
 par(mfrow=c(3,1))
-plot(diff(diff(co2, lag=24)), xlab="Time", ylab="Data diff"); title('a) Diff Data', line=0.3)
-Acf(co2_dd, lag.max = 100); title('b) ACF', line=0.3)
-Pacf(co2_dd, lag.max = 100); title('c) PACF', line=0.3)
+plot(diff(diff(co2, lag=24)), xlab="Time", ylab="Data diff"); title('Data differentiated', line=0.3)
+Acf(co2_dd, lag.max = 100); title('ACF of data differentiated', line=0.3)
+Pacf(co2_dd, lag.max = 100); title('PACF of data differentiated', line=0.3)
 
 
 #-------------- Stationnary model we will fit --------------#
@@ -96,36 +96,53 @@ for (s in sarimas){
 
 # let's show how good we predicted the last week compared to true values
 
-plot(true_values, type='l', col='blue', xlab="Date", ylab="CO2 concentration")
+par(mfrow=c(1,1))
+plot(true_values, type='l', col='blue', xlab="Time", ylab="CO2 ppm")
 title('true values vs predictions of last week')
 lines(best_model_predictions, col='red')
-legend(d[577:744][135], 354, legend=c("True", "Predicted"), col=c("blue", "red"), lty=1:1, cex=0.7)
+legend(d[577:744][145], 354, legend=c("True", "Predictions"), col=c("blue", "red"), lty=1:1, cex=0.7)
 
 
 #-------------- Final Model Analysis --------------#
 
-best_full_model_fit <- Arima(as.ts(co2), order=best_model_parameters$order, seasonal=best_model_parameters$seasonal)
-e <- best_full_model_fit$residuals
-plot(e)
-Acf(e)
-Pacf(e)
-cpgram(e)
-qqnorm(e)
-qqline(e, col='red') #not good because we have extrem values
 
+
+par(mar=c(3,3,1.2,0.1), mgp=c(1.5,0.4,0))
+par(mfrow=c(3,1))
+
+best_full_model_fit <- Arima(as.ts(co2), order=best_model_parameters$order, seasonal=best_model_parameters$seasonal)
+e <- zoo(best_full_model_fit$residuals, d)
+plot(e, xlab="Time", ylab="Residuals"); title('Residuals after model fitting')
+Acf(e, lag.max = 100); title("ACF of residuals")
+Pacf(e, lag.max = 100); title("PACF of residuals")
 
 #-------------- Ljung-Box --------------#
-lbt <- c(); for (h in 6:25) lbt[h] <- Box.test(e,lag=h,type='Ljung-Box',fitdf=5)$p.value
-plot(lbt, ylim=c(0,1)); abline(h=0.05,col='blue',lty='dotted')
+par(mfrow=c(1,1))
 
+lbt <- c(); for (h in 6:25) lbt[h] <- Box.test(e,lag=h,type='Ljung-Box',fitdf=5)$p.value
+plot(lbt, ylim=c(0,1)); abline(h=0.05,col='blue',lty='dotted'); title("Ljung-Box Test of residuals")
+
+
+par(mfrow=c(1,3))
+cpgram(e, main="Cum. Periodogram of residuals")
+
+qq <- qqnorm(e); qqline(e, col='red') #not good because we have extrem values
+all <- qq$y
+qq$y[[which.min(qq$y)]]
+max(all)
+range <- c(qq$x[[which.min(qq$x)]], qq$x[[which.max(qq$x)]])
+plot(qq$x, qq$y, xlim=range, ylim=range, xlab="Theoretical Quantiles", ylab="Sample Quantiles"); title("Normal Q-Q Plot with th. qu. ranges"); qqline(e, col='red')
 
 
 #-------------- Forecasting future value --------------#
-future_values <- forecast(best_full_model_fit, h=120, level=95)
+
+par(mfrow=c(1,1))
+pred_length = 24 * 7
+future_values <- forecast(best_full_model_fit, h=pred_length, level=95)
 
 from <- as.double(d[1])
 from_pred <- as.double(tail(d, n=1))
-to <- from_pred + 60 * 60 * 119
+to <- from_pred + 60 * 60 * (pred_length - 1)
 
 time <- seq(from_pred, to, by=60*60)
 
@@ -133,9 +150,10 @@ plot(
   zoo(future_values$fitted, d), 
   xlim=c(from, to), 
   ylim=c(min(min(co2), min(future_values$lower)), max(max(co2), max(future_values$upper))),
-  xlab="Date", 
+  xlab="Time", 
   ylab="CO2 concentration"
 )
+title("CO2 concentration predictions for one week")
 polygon(c(time, rev(time)), c(future_values$upper, rev(future_values$lower)), col = "grey", border = NA)
 lines(future_values$mean, col="blue")
   
