@@ -79,7 +79,7 @@ for (s in sarimas){
   model_fit <- Arima(co2[1:576], order=s$order, seasonal=s$seasonal)
   predictions <- forecast(model_fit, h=168, level=95)[["mean"]]
 
-  avg_error <- mean((true_values - predictions)^2)
+  avg_error <- mean(abs((true_values - predictions)))
   cat("(", s$order, ") x (", s$seasonal$order, ")_", s$seasonal$period, "\n")
   cat("loss =", avg_error, "\n")
   cat("aic =", model_fit$aic, "\n")
